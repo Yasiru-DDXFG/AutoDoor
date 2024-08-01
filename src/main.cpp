@@ -14,32 +14,68 @@ enum states
 unsigned long lasttime;
 boolean timerstate = false;
 int doorstate;
+boolean motor1_on = false;
+boolean motor2_on = false;
 
 // pins
 int limitsw_open = 9;
 int limitsw_close = 8;
 int sens_1 = 7;
 int sens_2 = 6;
-int motor_1 = 5;
-int motor_2 = 4;
+int motor_1 = 10;
+int motor_2 = 11;
 
 // funcs
 void closeDoor()
 {
-  digitalWrite(motor_1, HIGH);
   digitalWrite(motor_2, LOW);
+  for (int i = 0; i < 256; i++)
+  {
+    analogWrite(motor_1, i);
+    delay(1);
+  }
+  digitalWrite(motor_1, HIGH);
+  motor1_on = true;
+  motor2_on = false;
 }
 
 void openDoor()
 {
   digitalWrite(motor_1, LOW);
+  for (int i = 0; i < 256; i++)
+  {
+    analogWrite(motor_2, i);
+    delay(1);
+  }
   digitalWrite(motor_2, HIGH);
+  motor2_on = true;
+  motor1_on = false;
 }
 
 void stopMotor()
 {
+  if (motor1_on)
+  {
+    for (int i = 255; i >= 0; i--)
+    {
+      analogWrite(motor_1, i);
+      delay(1);
+    }
+    digitalWrite(motor_1, LOW);
+  }
+  if (motor2_on)
+  {
+    for (int i = 255; i >= 0; i--)
+    {
+      analogWrite(motor_2, i);
+      delay(1);
+    }
+    digitalWrite(motor_2, LOW);
+  }
   digitalWrite(motor_1, LOW);
   digitalWrite(motor_2, LOW);
+  motor1_on = false;
+  motor2_on = false;
 }
 
 // timer set to expire after timermax milliseconds
@@ -88,15 +124,22 @@ void setup()
   else
   {
     doorstate = OPENING;
-    openDoor();
+    // openDoor();
+    // triggerTimer();
   }
-
-  triggerTimer();
 }
 
 void loop()
 {
-  timerUpdate();
+  openDoor();
+  delay(3000);
+  stopMotor();
+  delay(3000);
+  closeDoor();
+  delay(3000);
+  stopMotor();
+  delay(3000);
+  /*timerUpdate();
 
   if (doorstate == OPENING)
   {
@@ -113,7 +156,7 @@ void loop()
     {
       closeDoor();
       doorstate = CLOSING;
-    } 
+    }
   }
 
   if (doorstate == CLOSING)
@@ -138,6 +181,6 @@ void loop()
     {
       openDoor();
       doorstate = OPENING;
-    } 
-  }
+    }
+  }*/
 }
