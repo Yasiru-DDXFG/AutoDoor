@@ -1,7 +1,8 @@
 #include <Arduino.h>
 
 // consts
-#define timermax 5000
+#define timermax 7000
+#define safetimemax 10000
 enum states
 {
   OPEN,
@@ -12,7 +13,9 @@ enum states
 
 // vars
 unsigned long lasttime;
+unsigned long safetime;
 boolean timerstate = false;
+boolean safetimeractive = false;
 int doorstate;
 boolean motor1_on = false;
 boolean motor2_on = false;
@@ -26,14 +29,30 @@ int motor_1 = 10;
 int motor_2 = 11;
 
 // funcs
+
+void safetyTimer()
+{
+  if ((millis() - safetime) > safetimemax)
+  {
+    safetimeractive = false;
+  }
+}
+
+void activateSafetytimer()
+{
+  safetimeractive = true;
+  safetime = millis();
+}
+
 void closeDoor()
 {
   digitalWrite(motor_2, LOW);
   for (int i = 0; i < 256; i++)
   {
     analogWrite(motor_1, i);
-    delay(1);
+    delay(2);
   }
+  activateSafetytimer();
   digitalWrite(motor_1, HIGH);
   motor1_on = true;
   motor2_on = false;
@@ -45,8 +64,9 @@ void openDoor()
   for (int i = 0; i < 256; i++)
   {
     analogWrite(motor_2, i);
-    delay(1);
+    delay(2);
   }
+  activateSafetytimer();
   digitalWrite(motor_2, HIGH);
   motor2_on = true;
   motor1_on = false;
@@ -92,11 +112,13 @@ void timerUpdate()
     timerstate = false;
   }
 }
+
 void triggerTimer()
 {
   timerstate = true;
   lasttime = millis();
 }
+
 boolean timerActive()
 {
   return timerstate;
@@ -105,8 +127,8 @@ boolean timerActive()
 void setup()
 {
   // init pins
-  pinMode(limitsw_close, INPUT);
-  pinMode(limitsw_open, INPUT);
+  pinMode(limitsw_close, INPUT_PULLUP);
+  pinMode(limitsw_open, INPUT_PULLUP);
   pinMode(sens_1, INPUT);
   pinMode(sens_2, INPUT);
   pinMode(motor_1, OUTPUT);
@@ -124,22 +146,16 @@ void setup()
   else
   {
     doorstate = OPENING;
-    // openDoor();
-    // triggerTimer();
+    openDoor();
+    triggerTimer();
   }
 }
 
 void loop()
 {
-  openDoor();
-  delay(3000);
-  stopMotor();
-  delay(3000);
-  closeDoor();
-  delay(3000);
-  stopMotor();
-  delay(3000);
-  /*timerUpdate();
+
+  timerUpdate();
+  safetyTimer();
 
   if (doorstate == OPENING)
   {
@@ -169,7 +185,7 @@ void loop()
     if (timerActive())
     {
       stopMotor();
-      delay(100);
+      delay(1000);
       openDoor();
       doorstate = OPENING;
     }
@@ -182,5 +198,11 @@ void loop()
       openDoor();
       doorstate = OPENING;
     }
-  }*/
+  }
+
+  if (!safetimeractive)
+  {
+    digitalWrite(motor_1, LOW);
+    digitalWrite(motor_2, LOW);
+  }
 }
