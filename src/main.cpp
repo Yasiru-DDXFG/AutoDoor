@@ -19,6 +19,8 @@ boolean safetimeractive = false;
 int doorstate;
 boolean motor1_on = false;
 boolean motor2_on = false;
+boolean sensorsTriggered = false;
+String strr[4] = {"Open", "Closed", "Opening", "Closing"};
 
 // pins
 int limitsw_open = 9;
@@ -29,19 +31,10 @@ int motor_1 = 10;
 int motor_2 = 11;
 
 // funcs
-
-void safetyTimer()
+void triggerTimer()
 {
-  if ((millis() - safetime) > safetimemax)
-  {
-    safetimeractive = false;
-  }
-}
-
-void activateSafetytimer()
-{
-  safetimeractive = true;
-  safetime = millis();
+  timerstate = true;
+  lasttime = millis();
 }
 
 void closeDoor()
@@ -52,7 +45,6 @@ void closeDoor()
     analogWrite(motor_1, i);
     delay(2);
   }
-  activateSafetytimer();
   digitalWrite(motor_1, HIGH);
   motor1_on = true;
   motor2_on = false;
@@ -66,7 +58,6 @@ void openDoor()
     analogWrite(motor_2, i);
     delay(2);
   }
-  activateSafetytimer();
   digitalWrite(motor_2, HIGH);
   motor2_on = true;
   motor1_on = false;
@@ -76,7 +67,8 @@ void stopMotor()
 {
   if (motor1_on)
   {
-    for (int i = 255; i >= 0; i--)
+    delay(0);
+    for (int i = 190; i >= 0; i--)
     {
       analogWrite(motor_1, i);
       delay(1);
@@ -98,26 +90,33 @@ void stopMotor()
   motor2_on = false;
 }
 
+void checkSensors()
+{
+  static int lastsen1 = false;
+  static int lastsen2 = false;
+
+  if (digitalRead(sens_1) && !lastsen1)
+  {
+    triggerTimer();
+  } 
+  if (digitalRead(sens_2) && !lastsen2)
+  {
+    triggerTimer();
+  }
+  lastsen1 = digitalRead(sens_1);
+  lastsen2 = digitalRead(sens_2);
+}
+
 // timer set to expire after timermax milliseconds
 // timer activates every time a sensor is triggered
 void timerUpdate()
 {
-  if (digitalRead(sens_1) || digitalRead(sens_2))
-  {
-    timerstate = true;
-    lasttime = millis();
-  }
   if ((millis() - lasttime) > timermax)
   {
     timerstate = false;
   }
 }
 
-void triggerTimer()
-{
-  timerstate = true;
-  lasttime = millis();
-}
 
 boolean timerActive()
 {
@@ -127,6 +126,7 @@ boolean timerActive()
 void setup()
 {
   // init pins
+  Serial.begin(9600);
   pinMode(limitsw_close, INPUT_PULLUP);
   pinMode(limitsw_open, INPUT_PULLUP);
   pinMode(sens_1, INPUT);
@@ -147,22 +147,28 @@ void setup()
   {
     doorstate = OPENING;
     openDoor();
-    triggerTimer();
   }
 }
 
 void loop()
 {
-
+  checkSensors();
   timerUpdate();
-  safetyTimer();
-
+  for (int i = 0; i < 4; i++)
+  {
+    if (doorstate == i)
+    {
+      Serial.println(strr[i]);
+    }
+  }
+  
   if (doorstate == OPENING)
   {
     if (!digitalRead(limitsw_open))
     {
       stopMotor();
       doorstate = OPEN;
+      triggerTimer();
     }
   }
 
@@ -180,7 +186,6 @@ void loop()
     if (!digitalRead(limitsw_close))
     {
       stopMotor();
-      timerstate = false;
       doorstate = CLOSED;
     }
     if (timerActive())
