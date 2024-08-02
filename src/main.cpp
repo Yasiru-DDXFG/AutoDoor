@@ -2,7 +2,7 @@
 
 // consts
 #define timermax 7000
-#define safetimemax 10000
+#define safetimemax 20000
 enum states
 {
   OPEN,
@@ -88,7 +88,7 @@ void stopMotor()
     for (int i = 255; i >= 0; i--)
     {
       analogWrite(motor_2, i);
-      delay(1);
+      delay(2);
     }
     digitalWrite(motor_2, LOW);
   }
@@ -135,11 +135,11 @@ void setup()
   pinMode(motor_2, OUTPUT);
 
   // determine current state
-  if (digitalRead(limitsw_close))
+  if (!digitalRead(limitsw_close))
   {
     doorstate = CLOSED;
   }
-  else if (digitalRead(limitsw_open))
+  else if (!digitalRead(limitsw_open))
   {
     doorstate = OPEN;
   }
@@ -159,7 +159,7 @@ void loop()
 
   if (doorstate == OPENING)
   {
-    if (digitalRead(limitsw_open))
+    if (!digitalRead(limitsw_open))
     {
       stopMotor();
       doorstate = OPEN;
@@ -177,15 +177,15 @@ void loop()
 
   if (doorstate == CLOSING)
   {
-    if (digitalRead(limitsw_close))
+    if (!digitalRead(limitsw_close))
     {
       stopMotor();
+      timerstate = false;
       doorstate = CLOSED;
     }
     if (timerActive())
     {
       stopMotor();
-      delay(1000);
       openDoor();
       doorstate = OPENING;
     }
@@ -200,9 +200,9 @@ void loop()
     }
   }
 
-  if (!safetimeractive)
+  /*if (!safetimeractive)
   {
     digitalWrite(motor_1, LOW);
     digitalWrite(motor_2, LOW);
-  }
+  }*/
 }
